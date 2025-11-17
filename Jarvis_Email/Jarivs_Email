@@ -1,0 +1,259 @@
+import os
+from googleapiclient.discovery import build # this links between your Python code and Gmail Without it, 
+                                            # your program can’t access or manage emails
+
+import httplib2 # httplib2 lets your program talk to Gmail over the internet safely 
+                # so you can send, read, or manage emails.
+
+from googleapiclient import errors # allows you to catch and handle errors
+                                   # (like connection issues or authorization failures)
+
+
+
+
+
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+from email.mime.text import MIMEText
+from google.auth.transport.requests import Request
+
+# from Jarvis_Fundamentals.Jarvis_speak import speak
+
+# ---- Setup folders ----
+location_of_Jarvis_Brain = r"C:\Users\andre\OneDrive\Jarvis"
+
+# This code makes sure the Jarvis folder exists—if it’s not there, it creates it.
+
+os.makedirs(location_of_Jarvis_Brain, exist_ok=True)
+
+
+# ---- Gmail API setup ----
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']                   # Allows us to read, write, label and delete emails
+SCOPES_2 = ["https://mail.google.com/"]                                     # Full Gmail access (everything, even permanent delete)
+DEFAULT_EMAIL = "andrewdariushboujabadi@gmail.com" 
+
+
+
+
+# This adds credentials.json and token.json to the location of jarvis brain
+CREDENTIALS_FILE = os.path.join(location_of_Jarvis_Brain, 'credentials.json')
+TOKEN_FILE = os.path.join(location_of_Jarvis_Brain, 'token.json')                   # Okay, this app can access your Gmail — here’s a special pass (token) so it doesn’t have to ask you again
+
+
+
+# ------------------------------
+# GOOGLE AUTH
+# ------------------------------
+creds = None
+if os.path.exists(TOKEN_FILE):
+    try:
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    except Exception as e:
+        print("Failed loading token.json:", e)
+
+# If credentials missing or invalid → re-authenticate
+if not creds or not creds.valid:
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+        creds = flow.run_local_server(port=0)
+    with open(TOKEN_FILE, 'w') as token:
+        token.write(creds.to_json())
+
+gmail_service = build('gmail', 'v1', credentials=creds)
+
+
+
+
+
+# This code connects to your Gmail securely using OAuth tokens instead of your password
+def build_service(TOKEN_FILE):
+    http = httplib2.Http() # It handles all requests sent to Gmail
+    http = TOKEN_FILE.authorize(http) # OAuth lets your program access Gmail safely
+                                       # without needing your password.
+
+    gmail_service = build('gmail', 'v1', http=http) # This object is what lets your program read, 
+                                              # send, and manage emails
+                                              # 'v1' means you’re using version 1, 
+                                              # which is the current stable version.
+    return gmail_service
+
+
+# ------------------------------
+# GMAIL HELPERS
+# ------------------------------
+
+# Each email has their own id number and eemail address (like dad@gmail.com)
+# Each email bage has an id number too
+
+
+def email_id(query=None):
+    """Return ALL message IDs matching query."""
+    try:
+        all_messages = []  # store every email ID here
+        next_page_token = None  # Gmail sends results in pages
+
+        while True:
+            # Ask Gmail for a batch of messages (100 is the max per request)
+            resp = gmail_service.users().messages().list(
+                userId='me',
+                q=query,               # optional search (like "from:dad@gmail.com")
+                maxResults=100,        # Gmail API max per page
+                pageToken=next_page_token  # for going to the next batch
+            ).execute()
+
+            # Add the message IDs from this batch
+            all_messages.extend(resp.get('messages', []))
+
+            # If there’s another page of emails, get its token
+            next_page_token = resp.get('nextPageToken')
+
+            # Stop when there are no more pages
+            if not next_page_token:
+                break
+
+        return all_messages
+
+    except Exception as e:
+        print("Error listing messages:", e)
+        return []
+
+
+
+
+def get_message(msg_id):
+    """Return message object for given ID."""
+    try:
+        msg = gmail_service.users().messages().get(
+            userId='me',   # your Gmail account
+            id=msg_id,     # the email ID we got from list_messages()
+            format='full'  # fetch the full content
+        ).execute()
+        return msg
+    except Exception as e:
+        print("Error getting message:", e)
+        return None
+
+
+if __name__ == '__main__':
+    ids = email_id()
+
+    # Create a text file that C can read
+    with open("emails.txt", "w", encoding="utf-8") as f:
+        for msg in ids:
+            msg_id = msg["id"]
+            full_email = get_message(msg_id)
+            snippet = full_email.get("snippet", "No snippet").replace("\n", " ")
+            f.write(f"ID: {msg_id}\nSnippet: {snippet}\n{'-'*40}\n")
+
+    print("✅ Saved all emails to emails.txt for C program to use.")
+
+
+# def show_recent_emails(max_results=5, query=None):
+#     msgs = list_messages(query=query, max_results=max_results)
+#     if not msgs:
+#         speak("I couldn't find any emails.")
+#         return []
+#     presented = []
+#     for i, m in enumerate(msgs, start=1):
+#         msg = get_message(m['id'])
+#         if not msg:
+#             continue
+#         sender, subject, snippet, short_body = extract_snippet_and_body(msg)
+#         entry = {'index': i, 'id': m['id'], 'from': sender, 'subject': subject, 'snippet': snippet, 'body_short': short_body}
+#         presented.append(entry)
+#         speak(f"{i}. From {sender}. Subject: {subject}. Snippet: {snippet[:120]}")
+#     return presented
+
+
+
+
+
+# def _get_header(headers, name):
+#     for h in headers:
+#         if h.get('name', '').lower() == name.lower():
+#             return h.get('value')
+#     return ""
+
+# def extract_snippet_and_body(msg):
+#     """Return (from, subject, snippet, short_body_text)."""
+#     payload = msg.get('payload', {})
+#     headers = payload.get('headers', [])
+#     sender = _get_header(headers, 'From') or "Unknown sender"
+#     subject = _get_header(headers, 'Subject') or "(no subject)"
+#     snippet = msg.get('snippet', '')
+#     body_text = ""
+
+#     def walk_parts(part):
+#         nonlocal body_text
+#         if not part:
+#             return
+#         mime_type = part.get('mimeType', '')
+#         if mime_type == 'text/plain' and part.get('body', {}).get('data'):
+#             data = part['body']['data']
+#             try:
+#                 decoded = base64.urlsafe_b64decode(data + "==").decode('utf-8', errors='replace')
+#             except:
+#                 decoded = base64.urlsafe_b64decode(data).decode('utf-8', errors='replace')
+#             body_text += decoded
+#         for p in part.get('parts', []) or []:
+#             walk_parts(p)
+
+#     walk_parts(payload)
+#     short_body = (body_text.strip().replace("\r", " ").replace("\n", " "))[:300] if body_text else ""
+#     return sender, subject, snippet, short_body
+
+# def trash_message(msg_id):
+#     """Move message to Trash."""
+#     try:
+#         gmail_service.users().messages().trash(userId='me', id=msg_id).execute()
+#         return True
+#     except Exception as e:
+#         print("Error trashing message:", e)
+#         return False
+
+# def delete_spam():
+#     """Delete all spam messages."""
+#     try:
+#         results = gmail_service.users().messages().list(userId='me', labelIds=['SPAM']).execute()
+#         messages = results.get('messages', [])
+#         if not messages:
+#             speak("Your spam folder is already empty.")
+#             return
+#         speak(f"Deleting {len(messages)} spam emails now, sir.")
+#         for msg in messages:
+#             gmail_service.users().messages().delete(userId='me', id=msg['id']).execute()
+#         speak("All spam emails have been permanently deleted.")
+#     except Exception as e:
+#         print(f"Error deleting spam: {e}")
+#         speak("I ran into a problem while trying to delete your spam.")
+
+
+# def prompt_delete_flow():
+#     speak("Okay. I'll list your most recent emails.")
+#     items = show_recent_emails(max_results=5)
+#     if not items:
+#         return
+#     speak("Tell me the number of the email you want to delete, or say cancel.")
+#     choice = input("Delete which number (or 'cancel')? ").strip().lower()
+#     if choice in ('cancel', 'c', 'no'):
+#         speak("Cancelled.")
+#         return
+#     if not choice.isdigit() or not (1 <= int(choice) <= len(items)):
+#         speak("Invalid number. Cancelled.")
+#         return
+#     idx = int(choice) - 1
+#     selected = items[idx]
+#     speak(f"You selected email {choice}. From {selected['from']}, subject {selected['subject']}. Are you sure you want to move it to Trash? (yes/no)")
+#     confirm = input("Confirm delete (yes/no): ").strip().lower()
+#     if confirm not in ('yes', 'y'):
+#         speak("Okay, not deleting it.")
+#         return
+#     ok = trash_message(selected['id'])
+#     if ok:
+#         speak("Message moved to Trash.")
+#     else:
+#         speak("I couldn't move the message to Trash.")
+
