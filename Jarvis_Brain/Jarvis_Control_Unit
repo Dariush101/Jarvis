@@ -1,0 +1,87 @@
+import sys
+import os
+import random
+from datetime import datetime
+
+# Add project root to sys.path
+JARVIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if JARVIS_DIR not in sys.path:
+    sys.path.insert(0, JARVIS_DIR)
+
+from Jarvis_Calendar.calendar_reader import main_calendar
+import Jarvis_Fundamentals.Jarvis_speak as jarvis_speak
+speak = jarvis_speak.speak
+
+
+
+
+
+# Fetch
+# Jarvis_Control_Unit = r"C:\Users\andre\OneDrive\Jarvis\Jarvis_Calendar"  
+
+
+def get_response(user_input):
+    
+
+    user_input = user_input.lower()
+    greetings = ["hello", "hi", "hey"]
+
+    if any(word in user_input for word in greetings):
+        response = random.choice(["Hello! How can I assist you today?", "Hi there! Ready to help you.", "Hey! What's up?"])
+        speak(response)
+    if "date" in user_input:
+        response =  f"Today's date is {datetime.now().strftime('%B %d, %Y')}"
+        speak(response)
+
+    if "your name" in user_input:
+        response =  "I am Jarvis, your personal assistant."
+        speak(response)
+
+
+    # Calendar
+
+    if "schedule looking like" in user_input:
+        scheduled = main_calendar()
+        for index, (date, summary) in enumerate(scheduled):
+            response = (f"'{date}' you have ('{summary}')")
+            speak(response)
+
+    months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    days = list(range(1, 32))
+
+    # Check if user mentioned a month OR a day AND said "add"
+    if (
+        any(month.lower() in user_input.lower() for month in months) or
+        any(str(day) in user_input for day in days)
+    ) and "add" in user_input.lower():
+        # scheduled = calendar_adder(months, days)
+        print(1)
+
+# def a():
+#     result_main = main_calendar()
+#     result_reader = calendar_adder()
+#     return result_main, result_reader
+
+
+
+
+
+
+
+def main():
+    speak("Hello Sir, what are we up to today?")
+
+    while True:
+        user_input = input("You: ")
+
+
+        if user_input.lower() in ["exit", "quit"]:
+            speak("Goodbye! Talk to you later.")
+            break
+        get_response(user_input)
+
+
+
+if __name__ == "__main__":
+    main()
+    
