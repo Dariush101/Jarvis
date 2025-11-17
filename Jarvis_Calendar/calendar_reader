@@ -1,0 +1,64 @@
+from datetime import datetime, timedelta, timezone             # Lets your code work with dates and times
+import sys
+import os
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build     # Lets your code connect to and use Google APIs
+from googleapiclient.errors import HttpError    # Lets your code catch errors from Google API calls.
+from .calendar_brain import main_calendar
+
+
+
+
+def calendar_reader():
+    service = main_calendar()
+    now = datetime.now(timezone.utc).isoformat()
+    one_month_later = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+
+    calendars = [
+        "primary",  # your personal calendar
+        "en.usa#holiday@group.v.calendar.google.com"  # U.S. holidays
+    ]
+
+    all_events = []
+
+    for cal_id in calendars:                               # Loop through each calendar ID in the list
+        events_result = service.events().list(             # Prepare a request to fetch events from the calendar
+            calendarId=cal_id,                             # Get events from this specific calendar
+            timeMin=now,                                   # Only events after the current time
+            timeMax=one_month_later,                       # Up to one month from now
+            singleEvents=True,                             # Expand recurring events into single events
+            orderBy="startTime"                            # Sort events by their start time
+        ).execute()                                       # Execute the API call and get the results
+            
+        all_events.extend(events_result.get("items", []))  # Add events from this calendar to our list
+
+    # Sort all events by start time
+    def get_start(event):
+        return event["start"].get("dateTime", event["start"].get("date"))
+        
+    all_events.sort(key=get_start)
+
+    if not all_events:
+        print("No upcoming events found.")
+        return
+
+
+
+        # Print event start time and summary
+    scheduled = []
+    for event in all_events:
+        start = event["start"].get("dateTime", event["start"].get("date"))
+        date_obj = datetime.strptime(start, "%Y-%m-%d")
+        formatted = date_obj.strftime("%B %d")
+
+        summary = event.get('summary', 'No Title')
+        # print(summary)
+        scheduled.append((formatted, summary))  # store as a tuple
+
+
+    print(scheduled)
+    return scheduled
+
+
+if __name__ == "__main__":
+    calendar_reader()
