@@ -1,0 +1,83 @@
+from gtts import gTTS
+from playsound import playsound
+import random
+from datetime import datetime
+import os
+import webbrowser
+import base64
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from email.mime.text import MIMEText
+import sys
+
+# ---- Setup folders ----
+DATA_DIR = r"C:\Users\andre\OneDrive\Jarvis"  # Jarvis folder
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
+
+# ------------------------------
+# MAIN COMMAND HANDLER
+# ------------------------------
+def call_number(number):
+    speak(f"Calling {number} now.")
+    webbrowser.open(f"tel:{number}")
+
+def get_response(user_input):
+    user_input = user_input.lower()
+    greetings = ["hello", "hi", "hey"]
+    farewell = ["bye", "exit", "quit", "goodbye"]
+
+    if any(word in user_input for word in greetings):
+        return random.choice(["Hello! How can I assist you today?", "Hi there! Ready to help you.", "Hey! What's up?"])
+
+    if "time" in user_input:
+        return f"The current time is {datetime.now().strftime('%H:%M')}"
+
+    if "date" in user_input:
+        return f"Today's date is {datetime.now().strftime('%B %d, %Y')}"
+
+    if "your name" in user_input:
+        return "I am Jarvis, your personal assistant."
+
+
+
+
+    # if "show" in user_input and "email" in user_input:
+    #     speak("Showing your recent emails.")
+    #     show_recent_emails(max_results=5)
+    #     return None
+
+    # if "delete" in user_input and "email" in user_input:
+    #     prompt_delete_flow()
+    #     return None
+
+    # if "delete" in user_input and "spam" in user_input:
+    #     delete_spam()
+    #     return None
+
+    if any(word in user_input for word in farewell):
+        return "Goodbye! Talk to you later."
+
+    return "I'm not sure how to respond to that."
+
+# ------------------------------
+# MAIN LOOP
+# ------------------------------
+from Jarvis_Fundamentals.Jarvis_speak import speak
+speak("Hello Sir, what are we up to today?")
+while True:
+    try:
+        user_input = input("You: ")
+    except (KeyboardInterrupt, EOFError):
+        speak("Goodbye! Talk to you later.")
+        sys.exit(0)
+
+    if user_input.lower() in ["exit", "quit"]:
+        speak("Goodbye! Talk to you later.")
+        break
+
+    response = get_response(user_input)
+    if response:
+        speak(response)
