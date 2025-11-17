@@ -1,0 +1,29 @@
+from gtts import gTTS
+from playsound import playsound
+import os
+
+DATA_DIR = r"C:\Users\andre\OneDrive\Jarvis"  # Jarvis folder
+os.makedirs(DATA_DIR, exist_ok=True)
+
+AUDIO_FILE = os.path.join(DATA_DIR, "response.mp3")
+LOG_FILE = os.path.join(DATA_DIR, "conversation_log.txt")
+
+
+# ------------------------------
+# TTS FUNCTION
+# ------------------------------
+def speak(text):
+    """Convert text to speech and play."""
+    print("Jarvis:", text)
+    try:
+        tts = gTTS(text=text, lang='en')
+        tts.save(AUDIO_FILE)
+        playsound(AUDIO_FILE)
+        os.remove(AUDIO_FILE)
+    except Exception as e:
+        print("TTS error:", e)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"Jarvis: {text}\n")
+
+    return text
+
