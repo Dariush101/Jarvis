@@ -1,0 +1,78 @@
+import sys
+import os
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build     # Lets your code connect to and use Google APIs
+from googleapiclient.errors import HttpError    # Lets your code catch errors from Google API calls.
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+# Scope: Full access to calendars (read, write, delete, share)
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+# Get the directory where the script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))         # looks for the folder that this file is in
+CLIENT_SECRET_FILE = os.path.join(SCRIPT_DIR, "client_secret_884639676251-4p2qhtpe9b2me8nn50e4h2fu2qelna43.apps.googleusercontent.com.json")
+# builds the full path to your client secret JSON file
+
+
+# Behind all the bs this is the why I can create and edit anything in my calendar
+def build_calendar_service(credentials):
+    service = build('calendar', 'v3', credentials=credentials)
+        # This object allows your program to
+        # read, create, edit, and delete events
+        # 'v3' = current stable Calendar API version
+    return service
+
+
+
+def main_calendar():
+    creds = None         # proof that your program is allowed to access your Google account. (right now we have none)
+    token_file = os.path.join(SCRIPT_DIR, "token.json")         # saves my log in
+
+    # Load saved credentials if they exist
+    if os.path.exists(token_file):
+        from google.oauth2.credentials import Credentials           # imports acces to my google account 
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)   # allows acces to y account
+
+    # creds.valid is a property of the Credentials object
+    # It tells you whether your current credentials can be used to access Google APIs
+
+        # True  → The credentials are still valid, so your program can access the calendar right now
+        # False → The credentials are not usable, either because they never existed or they expired
+
+    # token → The current OAuth access token.
+    # refresh_token → The refresh token used to get a new access token.
+    # id_token → OpenID Connect ID token (JWT).
+    # client_id → Your app's OAuth client ID.
+    # client_secret → Your app's OAuth client secret.
+    # scopes → Permissions requested from the user.
+    # granted_scopes → Permissions the user actually granted.
+    # expiry → When the token expires.
+    # expired → True if the access token is expired.
+    # valid → True if the credentials have a token and it is not expired.
+    # account → The user account associated with these credentials.
+    # quota_project_id → Project ID used for billing and quota.
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            from google.auth.transport.requests import Request
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
+            creds = flow.run_local_server(port=0)
+
+        # This allows the program to reuse the login info next time without asking you to log in again.
+        with open(token_file, "w") as token_file_obj:
+            token_file_obj.write(creds.to_json())
+
+    try:
+        service = build_calendar_service(creds)
+        return service
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+
+
+if __name__ == "__main__":
+    main_calendar()
