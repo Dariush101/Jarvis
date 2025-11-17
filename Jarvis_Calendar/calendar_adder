@@ -1,0 +1,38 @@
+from datetime import datetime, timedelta, timezone             # Lets your code work with dates and times
+import sys
+import os
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build     # Lets your code connect to and use Google APIs
+from googleapiclient.errors import HttpError    # Lets your code catch errors from Google API calls.
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+# Scope: Full access to calendars (read, write, delete, share)
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+# Get the directory where the script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))         # looks for the folder that this file is in
+CLIENT_SECRET_FILE = os.path.join(SCRIPT_DIR, "client_secret_884639676251-4p2qhtpe9b2me8nn50e4h2fu2qelna43.apps.googleusercontent.com.json")
+# builds the full path to your client secret JSON file
+
+
+# Behind all the bs this is the why I can create and edit anything in my calendar
+def build_calendar_service(credentials):
+    service = build('calendar', 'v3', credentials=credentials)
+        # This object allows your program to
+        # read, create, edit, and delete events
+        # 'v3' = current stable Calendar API version
+    return service
+
+
+
+def add_calendar():
+    creds = None         # proof that your program is allowed to access your Google account. (right now we have none)
+    token_file = os.path.join(SCRIPT_DIR, "token.json")         # saves my log in
+
+    # Load saved credentials if they exist
+    if os.path.exists(token_file):
+        from google.oauth2.credentials import Credentials           # imports acces to my google account 
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)   # allows acces to y account
+
